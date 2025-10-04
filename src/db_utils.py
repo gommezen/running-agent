@@ -21,3 +21,7 @@ def read_table(table_name: str) -> pd.DataFrame:
 if __name__ == "__main__":
     with engine.connect() as conn:
         print("✅ Connected to PostgreSQL successfully!")
+        
+def get_engine():
+    """Return the active SQLAlchemy engine."""
+    return engine

@@ -50,6 +50,8 @@ data/raw/
 data/interim/
 data/processed/
 !data/.gitkeep
+!data/processed/.gitkeep
+
 
 # Credentials / tokens (just in case)
 *.json
@@ -57,9 +59,19 @@ data/processed/
 *.secret
 *.key
 
+# Models (large artifacts not tracked)
+models/*.joblib
+models/*.pkl
+!models/.gitkeep
+
 # Logs
 *.log
 logs/
+**/archive/
+
+# Streamlit / Cache
+.streamlit/
+streamlit_cache/
 
 # Build / Dist
 build/
