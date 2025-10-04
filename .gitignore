@@ -48,6 +48,7 @@ Thumbs.db
 # Raw + interim data (keep only processed/cleaned if needed)
 data/raw/
 data/interim/
+data/processed/
 !data/.gitkeep
 
 # Credentials / tokens (just in case)
@@ -65,5 +66,6 @@ build/
 dist/
 *.egg
 *.egg-info/
+
 
 
