@@ -1,0 +1,29 @@
+# ===================================================
+# 🔧 Running-Agent — Git Attributes
+# ===================================================
+# Standardize line endings and clean notebook diffs
+# ===================================================
+
+# Use LF for all text files (cross-platform consistency)
+* text=auto eol=lf
+
+# Ensure Python files always use LF
+*.py text eol=lf
+
+# Normalize Jupyter notebooks and enable clean diffs
+*.ipynb text eol=lf
+*.json text eol=lf
+
+# Windows-specific files may retain CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Keep binary files untouched
+*.pkl binary
+*.joblib binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gz binary
+*.zip binary
+*.pdf binary

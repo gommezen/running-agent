@@ -1,0 +1,7 @@
+paths:
+  data_dir: data/processed/
+  sql_dir: data/sql/
+  models_dir: models/
+database:
+  url: postgresql://niels:securepwd@localhost:5432/running_agent
+  note: "Use environment variable DB_URL for credentials."
