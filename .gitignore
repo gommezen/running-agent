@@ -1,0 +1,69 @@
+# ---------------------------
+# Python
+# ---------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.eggs/
+*.manifest
+*.spec
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+*.env
+
+# Testing
+.coverage
+.tox/
+.pytest_cache/
+
+# ---------------------------
+# Jupyter / Notebooks
+# ---------------------------
+.ipynb_checkpoints/
+jupyter_cache/
+
+# ---------------------------
+# IDE / Editors
+# ---------------------------
+.vscode/
+.idea/
+*.swp
+
+# ---------------------------
+# OS Files
+# ---------------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------------
+# Project-specific
+# ---------------------------
+
+# Raw + interim data (keep only processed/cleaned if needed)
+data/raw/
+data/interim/
+!data/.gitkeep
+
+# Credentials / tokens (just in case)
+*.json
+*.token
+*.secret
+*.key
+
+# Logs
+*.log
+logs/
+
+# Build / Dist
+build/
+dist/
+*.egg
+*.egg-info/
+
+
