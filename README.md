@@ -1,5 +1,3 @@
-# 🏃 Running Agent — Data Science Project
-
 # 🏃 Running Agent — Data Science & Explainable ML Project
 
 **Running Agent** analyzes Garmin/Strava running data to extract insights, track training load, and build predictive, explainable models.  
@@ -55,9 +53,6 @@ Includes example SQL queries for:
 ---
 
 ## 🧱 Folder Structure
-
-
-
 running-agent/
 │
 ├── data/
@@ -91,8 +86,6 @@ running-agent/
 ├── .gitignore
 ├── README.md
 └── check_storage.sql
-
-
 
 ---
 
