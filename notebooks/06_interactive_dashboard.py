@@ -9,29 +9,29 @@
 # → to interactive exploration and deployment readiness.
 #
 # Purpose:
-# • Turn SHAP-based explanations and model predictions into an interactive web app.  
-# • Enable real-time exploration of individual runs, comparisons, and global insights.  
+# • Turn SHAP-based explanations and model predictions into an interactive web app.
+# • Enable real-time exploration of individual runs, comparisons, and global insights.
 # • Bridge the gap between data science outputs and user-facing analytics tools.
 #
 # Inputs:
-# • Trained Random Forest Classifier + SHAP explainer (Notebook 5).  
-# • PostgreSQL database table `runs_summary` (Notebook 7) containing processed runs.  
+# • Trained Random Forest Classifier + SHAP explainer (Notebook 5).
+# • PostgreSQL database table `runs_summary` (Notebook 7) containing processed runs.
 # • Feature descriptions and metadata defined in the project’s `src/` folder.
 #
 # Components:
-# 1. Model + data loading with caching (for fast dashboard refresh).  
-# 2. Streamlit layout with tabs for single-run, comparison, and global insights.  
-# 3. Interactive SHAP visualizations for local and global explanations.  
+# 1. Model + data loading with caching (for fast dashboard refresh).
+# 2. Streamlit layout with tabs for single-run, comparison, and global insights.
+# 3. Interactive SHAP visualizations for local and global explanations.
 # 4. Integration hooks for PostgreSQL and model files in `/models`.
 #
 # Outcomes:
-# • A functional Streamlit dashboard that interprets model predictions live.  
-# • Tools for comparing runs and understanding what drives performance changes.  
+# • A functional Streamlit dashboard that interprets model predictions live.
+# • Tools for comparing runs and understanding what drives performance changes.
 # • A deployable foundation for end-user analytics and future Strava/Garmin integration.
 #
 # Next step (Notebook 7):
-# • Connect the dashboard to the PostgreSQL backend for dynamic queries.  
-# • Add data-lineage logging and automated model updates.  
+# • Connect the dashboard to the PostgreSQL backend for dynamic queries.
+# • Add data-lineage logging and automated model updates.
 # • Prepare deployment via Docker or Streamlit Cloud.
 # ===================================================
 
@@ -245,8 +245,8 @@ def shap_vector_for_sample(explainer, model, X_one_row: pd.DataFrame):
 st.title("🏃‍♂️ Running Insights Dashboard")
 st.markdown("""
 Use the tabs to explore:
-1. **Single run** prediction + SHAP explanation  
-2. **Compare two runs** to see what changed  
+1. **Single run** prediction + SHAP explanation
+2. **Compare two runs** to see what changed
 3. **Global insights** (feature importance + trends)
 """)
 
@@ -330,7 +330,7 @@ with tab2:
 # ---------------------------------------------------
 with tab3:
     st.subheader("Global Feature Importance and Trends")
-    
+
     # GLOBAL SHAP:
     # We compute mean absolute SHAP per feature across the dataset shown in the dashboard.
     # This gives a high-level “which features matter most on average?” view.
@@ -376,7 +376,7 @@ with tab3:
             st.dataframe(desc_df)
     else:
         st.info("No SHAP explainer — global importance not available.")
-        
+
     # Simple performance trend (example metric). Add more KPIs as needed.
     st.markdown("#### Performance trend (avg pace over time)")
     if "avg_pace_min_km" in summary_df.columns:
@@ -413,4 +413,3 @@ with tab3:
 # - A deployable **Streamlit app template** (notebook6.py) ready for Docker packaging.
 # - Unified SHAP utilities (`xai_utils.py`) for local/global explanations.
 # - Live database connection for real-time data exploration and updates.
-

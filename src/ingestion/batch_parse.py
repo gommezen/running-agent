@@ -1,8 +1,10 @@
 from pathlib import Path
+
 import pandas as pd
-from src.ingestion.unpack_fit import unpack_fit_gz
-from src.ingestion.parse_fit import parse_fit_file
+
 from src.features.engineering import process_run
+from src.ingestion.parse_fit import parse_fit_file
+from src.ingestion.unpack_fit import unpack_fit_gz
 
 raw_dir = Path("data/raw")
 interim_dir = Path("data/interim")
