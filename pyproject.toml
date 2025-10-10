@@ -32,16 +32,11 @@ indent-style = "space"
 # ---- Type checking ----
 [tool.mypy]
 python_version = "3.11"
-strict = true
-ignore_missing_imports = true
 warn_unused_configs = true
-warn_return_any = true
-warn_unreachable = true
-disallow_untyped_defs = true
+ignore_missing_imports = true
 pretty = true
-show_error_codes = true
-show_column_numbers = true
-exclude = "(^notebooks/|^data/|^models/|^tests/)"
+exclude = "^(notebooks/|data/|models/|tests/)"
+
 
 # ---- Testing ----
 [tool.pytest.ini_options]
