@@ -1,12 +1,12 @@
 # TODO — Running Agent
 
-## In Progress
-- [ ] UX Update — Streamlit Dashboard: Refine layout, tabs, visual hierarchy, filters, metric cards, consistent styling
+## High Priority
+- [ ] Dashboard UX + Themes: Cohesive theme, metric cards (weekly mileage, pace trend, streak), sidebar filters, consistent styling
+- [ ] AI Model Selection: Toggle between RF classifier/regressor in dashboard, compare predictions, dynamic SHAP explanations per model
+- [ ] Dockerize: docker-compose.yml with Streamlit + PostgreSQL, one-command setup
 
 ## Next Up
 - [ ] Notebook 8 — Monitoring & Automated Logging: Lineage tracking, model-version logging, automated SHAP summaries
-- [ ] Dockerize the App: Containerize Streamlit + PostgreSQL for portable deployment
-- [ ] CI/CD Integration (GitHub Actions): Automate testing, style checks, build verification on every commit
 - [ ] API Integration (Garmin / Strava): Enable automatic ingestion of new running data
 - [ ] Agent Iteration v0.3+: Adaptive "Running Agent" with personalized training insights and recommendations
 
