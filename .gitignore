@@ -73,6 +73,9 @@ logs/
 .streamlit/
 streamlit_cache/
 
+# Claude Code
+CLAUDE.md
+
 # Build / Dist
 build/
 dist/

@@ -1,6 +1,6 @@
 # 🏃 Running Agent — Data Science & Explainable ML Project
 
-**Running Agent** analyzes Garmin/Strava running data to extract insights, track training load, and build predictive, explainable models.  
+**Running Agent** analyzes Garmin/Strava running data to extract insights, track training load, and build predictive, explainable models.
 It serves both as a **personal training analytics tool** and a **data-science portfolio project** showcasing reproducible pipelines, interpretable ML, and SQL-backed dashboards.
 
 ---
@@ -8,17 +8,17 @@ It serves both as a **personal training analytics tool** and a **data-science po
 ## 📊 Overview
 
 ### Purpose
-- Understand and visualize individual running patterns  
-- Track key performance indicators (distance, pace, cadence, load)  
-- Cluster runs into natural categories (easy, tempo, hilly, intervals)  
-- Predict pace and fatigue using Random Forest models  
-- Prototype a *Tamagotchi-style running agent* that suggests training intensity  
+- Understand and visualize individual running patterns
+- Track key performance indicators (distance, pace, cadence, load)
+- Cluster runs into natural categories (easy, tempo, hilly, intervals)
+- Predict pace and fatigue using Random Forest models
+- Prototype a *Tamagotchi-style running agent* that suggests training intensity
 
 ### Core Concepts
-- End-to-end ML workflow: raw Garmin `.fit` → cleaned dataset → ML models  
-- Explainable AI (SHAP) for transparent model behaviour  
-- Interactive dashboard powered by **Streamlit**  
-- **PostgreSQL + SQLAlchemy** for structured, persistent data storage  
+- End-to-end ML workflow: raw Garmin `.fit` → cleaned dataset → ML models
+- Explainable AI (SHAP) for transparent model behaviour
+- Interactive dashboard powered by **Streamlit**
+- **PostgreSQL + SQLAlchemy** for structured, persistent data storage
 
 ---
 
@@ -38,19 +38,19 @@ It serves both as a **personal training analytics tool** and a **data-science po
 
 ## 🗄️ Database Integration
 
-- **PostgreSQL 16** for structured, durable storage  
-- **SQLAlchemy** for engine creation and ORM-style interactions  
+- **PostgreSQL 16** for structured, durable storage
+- **SQLAlchemy** for engine creation and ORM-style interactions
 
 **Core tables**
 
-- `runs_summary` — per-run feature set  
-- `shap_importance_global` — mean SHAP values across features  
-- `data_lineage` — timestamps, dataset versions, transformation logs  
+- `runs_summary` — per-run feature set
+- `shap_importance_global` — mean SHAP values across features
+- `data_lineage` — timestamps, dataset versions, transformation logs
 
 Example SQL use cases:
-- Weekly summaries & training load trends  
-- Top SHAP features per model  
-- Reproducibility checks through lineage  
+- Weekly summaries & training load trends
+- Top SHAP features per model
+- Reproducibility checks through lineage
 
 ---
 
@@ -109,7 +109,7 @@ pip install -r requirements.txt
 # 4. Test PostgreSQL connection
 python -m src.db_utils
 
---- 
+---
 
 🧩 Next Steps for this Project
 
