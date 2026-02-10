@@ -1,5 +1,13 @@
 # 🏃 Running Agent — Data Science & Explainable ML Project
 
+[![CI](https://github.com/gommezen/running-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/gommezen/running-agent/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.35-FF4B4B?logo=streamlit&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-F7931E?logo=scikitlearn&logoColor=white)
+![SHAP](https://img.shields.io/badge/SHAP-0.45-purple)
+![Ruff](https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white)
+
 **Running Agent** analyzes Garmin/Strava running data to extract insights, track training load, and build predictive, explainable models.
 It serves both as a **personal training analytics tool** and a **data-science portfolio project** showcasing reproducible pipelines, interpretable ML, and SQL-backed dashboards.
 
