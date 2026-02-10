@@ -58,11 +58,16 @@ data/processed/
 *.token
 *.secret
 *.key
+.env.txt
 
 # Models (large artifacts not tracked)
 models/*.joblib
 models/*.pkl
+models/*.pickle
 !models/.gitkeep
+
+# Notebook data artifacts
+notebooks/data/
 
 # Logs
 *.log
