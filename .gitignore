@@ -82,8 +82,6 @@ streamlit_cache/
 CLAUDE.md
 .claude/
 
-# SQL scripts
-data/sql/
 
 # Build / Dist
 build/
