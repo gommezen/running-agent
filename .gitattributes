@@ -11,8 +11,7 @@
 *.py text eol=lf
 
 # Normalize Jupyter notebooks and enable clean diffs
-# Mark as documentation so GitHub counts Python, not Notebook, in language stats
-*.ipynb text eol=lf linguist-documentation
+*.ipynb text eol=lf
 *.json text eol=lf
 
 # Windows-specific files may retain CRLF
