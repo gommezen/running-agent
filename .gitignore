@@ -75,7 +75,7 @@ logs/
 **/archive/
 
 # Streamlit / Cache
-.streamlit/
+.streamlit/secrets.toml
 streamlit_cache/
 
 # Claude Code

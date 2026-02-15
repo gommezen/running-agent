@@ -1,24 +1,27 @@
 #!/usr/bin/env python
 
 # ===================================================
-# 📓 Notebook 6 — Interactive Dashboard (Humanized UX)
+# Interactive Dashboard (Humanized UX — Dark Athletic Theme)
 # ===================================================
 #
-# This version focuses on clarity, narrative explainability, and user flow.
-# It keeps all ML and DB logic identical to the original file.
+# Dark athletic-themed Streamlit dashboard with electric green accents.
+# Translates technical ML outputs into human-readable running insights.
 #
-# Goals:
-# • Translate technical labels into running-language.
-# • Explain model predictions in short, meaningful sentences.
-# • Organize sections around user reasoning, not developer structure.
+# Features:
+# - Metric cards (weekly mileage, avg pace, streak, total runs)
+# - Sidebar filters (date range, run type, distance)
+# - SHAP-powered single-run analysis, run comparison, global insights
+# - Custom Altair dark theme with Exo 2 typography
 # ===================================================
+
+from __future__ import annotations
 
 # standard libraries
 import contextlib
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import (  # ← add TYPE_CHECKING, Callable, TypeVar
+from typing import (
     TYPE_CHECKING,
     Any,
     TypeVar,
@@ -31,7 +34,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# ---- Typed shims so mypy treats cache decorators as identity (keeps function types) ----
+# ---- Typed shims so mypy treats cache decorators as identity ----
 F = TypeVar("F", bound=Callable[..., Any])
 
 if TYPE_CHECKING:
@@ -43,7 +46,7 @@ else:
     cache_resource = st.cache_resource
 
 # ---------------------------------------------------
-# 🔧 Project Root Finder
+# Project Root Finder
 # ---------------------------------------------------
 
 project_root = Path(__file__).resolve().parent
@@ -52,20 +55,25 @@ sys.path.append(str(project_root))
 from src.db_utils import get_engine  # noqa: E402
 
 with contextlib.suppress(Exception):
-    st.set_page_config(page_title="Running Insights Dashboard", layout="wide")
+    st.set_page_config(
+        page_title="Running Insights Dashboard",
+        page_icon="\U0001f3c3",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
 
 
 def _find_project_root() -> Path:
     anchors = [Path(__file__).resolve(), Path.cwd().resolve()]
-    visited = set()
+    visited: set[Path] = set()
     for base in anchors:
-        for p in [base] + list(base.parents):
+        for p in [base, *list(base.parents)]:
             if p in visited:
                 continue
             visited.add(p)
             if (p / "src").exists() and (p / "models").exists():
                 return p
-    for p in [Path(__file__).resolve()] + list(Path(__file__).resolve().parents):
+    for p in [Path(__file__).resolve(), *list(Path(__file__).resolve().parents)]:
         if p.name.lower() == "running-agent":
             return p
     return Path(__file__).resolve().parents[1]
@@ -75,15 +83,202 @@ project_root = _find_project_root()
 sys.path.append(str(project_root))
 
 
-with contextlib.suppress(Exception):
-    st.set_page_config(page_title="Running Insights Dashboard", layout="wide")
+# ---------------------------------------------------
+# Custom CSS Injection
+# ---------------------------------------------------
+def inject_custom_css() -> None:
+    """Inject dark athletic theme CSS with Exo 2 typography."""
+    st.markdown(
+        """
+        <style>
+        @import url(
+            'https://fonts.googleapis.com/css2?family=Exo+2:'
+            'wght@400;600;700;800&display=swap'
+        );
+
+        :root {
+            --bg-primary: #0E1117;
+            --bg-secondary: #161B22;
+            --bg-card: #1C2128;
+            --accent: #00FF87;
+            --accent-dim: #00CC6A;
+            --text-primary: #E6EDF3;
+            --text-secondary: #8B949E;
+            --text-muted: #484F58;
+            --border: #30363D;
+            --font-stack: "Exo 2", -apple-system,
+                          BlinkMacSystemFont, sans-serif;
+        }
+
+        html, body, [class*="css"] {
+            font-family: var(--font-stack) !important;
+        }
+
+        h1 {
+            font-family: var(--font-stack) !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.5px !important;
+            color: var(--text-primary) !important;
+        }
+
+        h2, h3 {
+            font-family: var(--font-stack) !important;
+            font-weight: 700 !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-testid="stMetric"] {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        [data-testid="stMetricLabel"] {
+            font-family: var(--font-stack) !important;
+            font-weight: 600 !important;
+            font-size: 0.85rem !important;
+            color: var(--text-secondary) !important;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        [data-testid="stMetricValue"] {
+            font-family: var(--font-stack) !important;
+            font-weight: 800 !important;
+            font-size: 2rem !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-testid="stMetricDelta"] > div {
+            font-weight: 600 !important;
+        }
+
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            font-family: var(--font-stack) !important;
+            font-weight: 700 !important;
+            font-size: 0.95rem !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 24px !important;
+            border-radius: 8px 8px 0 0;
+            color: var(--text-secondary) !important;
+        }
+
+        .stTabs [aria-selected="true"] {
+            color: var(--accent) !important;
+            border-bottom: 3px solid var(--accent) !important;
+        }
+
+        [data-testid="stSidebar"] {
+            background: var(--bg-secondary) !important;
+            border-right: 1px solid var(--border);
+        }
+
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3 {
+            color: var(--accent) !important;
+        }
+
+        hr {
+            border-color: var(--border) !important;
+        }
+
+        [data-baseweb="select"] {
+            border-radius: 8px !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 4px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+inject_custom_css()
 
 
 # ---------------------------------------------------
-# 📁 Model Paths
+# Altair Dark Athletic Theme
+# ---------------------------------------------------
+@alt.theme.register("running_dark", enable=True)
+def _running_dark_theme() -> alt.theme.ThemeConfig:
+    """Dark athletic theme for all Altair charts."""
+    return alt.theme.ThemeConfig(
+        {
+            "config": {
+                "background": "#0E1117",
+                "view": {"stroke": "transparent"},
+                "axis": {
+                    "domainColor": "#30363D",
+                    "gridColor": "#21262D",
+                    "tickColor": "#30363D",
+                    "labelColor": "#8B949E",
+                    "titleColor": "#E6EDF3",
+                    "labelFont": "Exo 2, sans-serif",
+                    "titleFont": "Exo 2, sans-serif",
+                    "labelFontSize": 11,
+                    "titleFontSize": 13,
+                    "titleFontWeight": 600,
+                },
+                "legend": {
+                    "labelColor": "#8B949E",
+                    "titleColor": "#E6EDF3",
+                    "labelFont": "Exo 2, sans-serif",
+                    "titleFont": "Exo 2, sans-serif",
+                },
+                "title": {
+                    "color": "#E6EDF3",
+                    "font": "Exo 2, sans-serif",
+                    "fontSize": 16,
+                    "fontWeight": 700,
+                },
+                "mark": {"color": "#00FF87"},
+                "bar": {"color": "#00FF87"},
+                "line": {"color": "#00FF87", "strokeWidth": 2.5},
+                "point": {"color": "#00FF87", "filled": True, "size": 60},
+                "range": {
+                    "category": [
+                        "#00FF87",
+                        "#00BFFF",
+                        "#FF6B6B",
+                        "#FFD93D",
+                        "#C084FC",
+                        "#FF8C42",
+                        "#6EE7B7",
+                        "#F472B6",
+                    ],
+                },
+            },
+        }
+    )
+
+
+# ---------------------------------------------------
+# Model Paths
 # ---------------------------------------------------
 model_dir = project_root / "models"
-_model_candidates = ["random_forest_classifier.pkl", "random_forest_clf.pkl"]
+_model_candidates = [
+    "random_forest_classifier.pkl",
+    "random_forest_clf.pkl",
+]
 rf_model_path = None
 for name in _model_candidates:
     cand = model_dir / name
@@ -95,7 +290,7 @@ explainer_path = model_dir / "shap_explainer_clf.pkl"
 
 
 # ---------------------------------------------------
-# 🧠 Load Models + Data
+# Load Models + Data
 # ---------------------------------------------------
 @cache_resource
 def load_models() -> tuple[Any, Any | None]:
@@ -116,12 +311,17 @@ def load_data() -> pd.DataFrame:
 
 rf_clf, explainer_clf = load_models()
 summary_df = load_data()
-st.caption(f"Loaded data: {summary_df.shape[0]} runs, {summary_df.shape[1]} features")
+
+# Add predicted run type column for sidebar filtering
+_feature_cols = rf_clf.feature_names_in_
+_X_fill = summary_df[_feature_cols].fillna(summary_df[_feature_cols].mean())
+summary_df["predicted_type"] = rf_clf.predict(_X_fill)
+
 
 # ---------------------------------------------------
-# 🏷️ Feature & Cluster Labels
+# Feature & Cluster Labels
 # ---------------------------------------------------
-FEATURE_LABELS = {
+FEATURE_LABELS: dict[str, str] = {
     "total_distance_km": "Distance (km)",
     "duration_min": "Duration (min)",
     "avg_pace_min_km": "Average Pace (min/km)",
@@ -137,7 +337,7 @@ FEATURE_LABELS = {
     "fastest_5min_pace": "Fastest 5-min Pace (min/km)",
 }
 
-RUN_TYPE_LABELS = {
+RUN_TYPE_LABELS: dict[int, str] = {
     0: "Recovery / Easy Run",
     1: "Endurance Run",
     2: "Interval / Tempo Run",
@@ -146,26 +346,26 @@ RUN_TYPE_LABELS = {
 
 
 # ---------------------------------------------------
-# 🧠 Explainability Text Generator
+# Explainability Text Generator
 # ---------------------------------------------------
 def explain_prediction(pred_label: int, top_features: pd.Series) -> str:
     """Return a short, human explanation for the prediction."""
     if pred_label == 0:
-        return "Low intensity and short duration suggest this was an easy recovery run."
-    elif pred_label == 1:
+        return "Low intensity and short duration suggest " "this was an easy recovery run."
+    if pred_label == 1:
         return (
-            "Steady pace, moderate elevation, and consistent cadence indicate endurance training."
+            "Steady pace, moderate elevation, and consistent "
+            "cadence indicate endurance training."
         )
-    elif pred_label == 2:
-        return "High cadence and variable pace point toward interval or tempo work."
-    elif pred_label == 3:
-        return "Long distance and steady rhythm match a classic long run profile."
-    else:
-        return "The model detected a mixed running pattern based on your data."
+    if pred_label == 2:
+        return "High cadence and variable pace point toward " "interval or tempo work."
+    if pred_label == 3:
+        return "Long distance and steady rhythm match " "a classic long run profile."
+    return "The model detected a mixed running pattern " "based on your data."
 
 
 # ---------------------------------------------------
-# 🧩 Helper for SHAP vector extraction
+# Helper for SHAP vector extraction
 # ---------------------------------------------------
 def shap_vector_for_sample(
     explainer: Any,
@@ -174,14 +374,12 @@ def shap_vector_for_sample(
 ) -> tuple[np.ndarray, Any]:
     """
     Safe universal SHAP vector extractor.
-    Works for list-per-class, (n,feat,class), (n,class,feat), or (n,feat).
+    Works for list-per-class, (n,feat,class), (n,class,feat),
+    or (n,feat).
     """
     nfeat = X_one_row.shape[1]
     raw: Any = explainer.shap_values(X_one_row)
     arr = np.asarray(raw)
-
-    # For debugging – will print once in Streamlit log
-    st.write("SHAP detected shape:", arr.shape)
 
     # Case 1: SHAP returns list of arrays (one per class)
     if isinstance(raw, list):
@@ -205,28 +403,211 @@ def shap_vector_for_sample(
     if arr.ndim == 2 and arr.shape[1] == nfeat:
         return arr[0], raw
 
-    # Anything else → report shape
-    st.error(f"⚠️ Unhandled SHAP shape: {arr.shape}")
+    # Anything else
+    st.error(f"Unhandled SHAP shape: {arr.shape}")
     return np.zeros(nfeat), raw
 
 
 # ---------------------------------------------------
-# 🧭 Layout — Tabs
+# Metric Computation Helpers
+# ---------------------------------------------------
+def _compute_weekly_mileage(
+    df: pd.DataFrame,
+) -> tuple[str, str | None]:
+    """Sum distance last 7 days, delta vs prior 7 days."""
+    if df.empty:
+        return "0.0 km", None
+    now = df["date"].max()
+    week_ago = now - pd.Timedelta(days=7)
+    two_weeks_ago = now - pd.Timedelta(days=14)
+    current = df.loc[df["date"] > week_ago, "total_distance_km"].sum()
+    previous = df.loc[
+        (df["date"] > two_weeks_ago) & (df["date"] <= week_ago),
+        "total_distance_km",
+    ].sum()
+    delta = None
+    if previous > 0:
+        pct = ((current - previous) / previous) * 100
+        delta = f"{pct:+.1f}%"
+    return f"{current:.1f} km", delta
+
+
+def _compute_avg_pace(
+    df: pd.DataFrame,
+    full_df: pd.DataFrame,
+) -> tuple[str, str | None]:
+    """Mean pace formatted as M:SS, delta vs overall mean."""
+    if df.empty or "avg_pace_min_km" not in df.columns:
+        return "--:-- /km", None
+    avg = df["avg_pace_min_km"].mean()
+    overall = full_df["avg_pace_min_km"].mean()
+    delta = None
+    if not pd.isna(overall) and not pd.isna(avg):
+        diff = avg - overall
+        delta = f"{diff:+.2f} min/km"
+    if pd.isna(avg):
+        return "--:-- /km", None
+    minutes = int(avg)
+    seconds = int((avg - minutes) * 60)
+    return f"{minutes}:{seconds:02d} /km", delta
+
+
+def _compute_streak(df: pd.DataFrame) -> tuple[str, None]:
+    """Count consecutive days with runs from most recent date."""
+    if df.empty:
+        return "0 days", None
+    dates = sorted(df["date"].dt.date.unique(), reverse=True)
+    streak = 1
+    for i in range(1, len(dates)):
+        if (dates[i - 1] - dates[i]).days == 1:
+            streak += 1
+        else:
+            break
+    unit = "day" if streak == 1 else "days"
+    return f"{streak} {unit}", None
+
+
+def _compute_total_runs(
+    df: pd.DataFrame,
+) -> tuple[str, str | None]:
+    """Total runs with delta vs prior 30-day period."""
+    if df.empty:
+        return "0", None
+    total = len(df)
+    now = df["date"].max()
+    month_ago = now - pd.Timedelta(days=30)
+    two_months_ago = now - pd.Timedelta(days=60)
+    recent = len(df[df["date"] > month_ago])
+    prior = len(df[(df["date"] > two_months_ago) & (df["date"] <= month_ago)])
+    delta = None
+    if prior > 0:
+        diff = recent - prior
+        delta = f"{diff:+d} vs prev 30d"
+    return str(total), delta
+
+
+# ---------------------------------------------------
+# Sidebar Filters
+# ---------------------------------------------------
+with st.sidebar:
+    st.markdown("## Filters")
+    st.caption("Narrow the runs displayed in charts and metrics.")
+
+    # Date range
+    min_date = summary_df["date"].min().date()
+    max_date = summary_df["date"].max().date()
+    date_range = st.date_input(
+        "Date range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date,
+        key="sidebar_date_range",
+    )
+
+    # Run type filter
+    all_run_types = list(RUN_TYPE_LABELS.values())
+    selected_types = st.multiselect(
+        "Run type",
+        options=all_run_types,
+        default=all_run_types,
+        key="sidebar_run_type",
+    )
+
+    # Distance range slider
+    dist_min = float(summary_df["total_distance_km"].min())
+    dist_max = float(summary_df["total_distance_km"].max())
+    if dist_min < dist_max:
+        dist_range = st.slider(
+            "Distance (km)",
+            min_value=dist_min,
+            max_value=dist_max,
+            value=(dist_min, dist_max),
+            step=0.5,
+            key="sidebar_distance",
+        )
+    else:
+        dist_range = (dist_min, dist_max)
+
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align:center; color:#8B949E; "
+        "font-size:0.75rem; padding:8px 0;'>"
+        "Running Insights v2.0<br>"
+        "RF + SHAP Analytics"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+# ---------------------------------------------------
+# Apply Filters → filtered_df
+# ---------------------------------------------------
+_reverse_type_map = {v: k for k, v in RUN_TYPE_LABELS.items()}
+_mask = pd.Series(True, index=summary_df.index)
+
+# Date filter
+if isinstance(date_range, tuple) and len(date_range) == 2:
+    _mask &= (summary_df["date"].dt.date >= date_range[0]) & (
+        summary_df["date"].dt.date <= date_range[1]
+    )
+
+# Run type filter
+_selected_ids = [_reverse_type_map[t] for t in selected_types if t in _reverse_type_map]
+_mask &= summary_df["predicted_type"].isin(_selected_ids)
+
+# Distance filter
+_mask &= (summary_df["total_distance_km"] >= dist_range[0]) & (
+    summary_df["total_distance_km"] <= dist_range[1]
+)
+
+filtered_df = summary_df[_mask].copy()
+
+
+# ---------------------------------------------------
+# Layout — Title + Metric Cards
 # ---------------------------------------------------
 st.title("Running Insights Dashboard")
 st.write(
-    "Explore how your model interprets training data — from single run analysis "
-    "to overall performance patterns."
+    "Explore how your model interprets training data "
+    "\u2014 from single run analysis to overall performance patterns."
 )
 
+if filtered_df.empty:
+    st.warning("No runs match the current filters.")
+else:
+    m1, m2, m3, m4 = st.columns(4, gap="medium")
+    weekly_val, weekly_delta = _compute_weekly_mileage(filtered_df)
+    pace_val, pace_delta = _compute_avg_pace(filtered_df, summary_df)
+    streak_val, _ = _compute_streak(filtered_df)
+    total_val, total_delta = _compute_total_runs(filtered_df)
+
+    with m1:
+        st.metric("Weekly Mileage", weekly_val, weekly_delta)
+    with m2:
+        st.metric(
+            "Avg Pace",
+            pace_val,
+            pace_delta,
+            delta_color="inverse",
+        )
+    with m3:
+        st.metric("Run Streak", streak_val)
+    with m4:
+        st.metric("Total Runs", total_val, total_delta)
+
+st.caption(f"Loaded {summary_df.shape[0]} runs " f"({len(filtered_df)} shown after filters)")
+
+
+# ---------------------------------------------------
+# Tabs
+# ---------------------------------------------------
 tab1, tab2, tab3 = st.tabs(["Single Run", "Compare Runs", "Global Insights"])
 
 # ---------------------------------------------------
-# 🔍 Tab 1 — Single Run
+# Tab 1 — Single Run
 # ---------------------------------------------------
 with tab1:
     st.subheader("Analyze This Run")
-    options = summary_df["date"].dt.strftime("%Y-%m-%d").tolist()
+    options = filtered_df["date"].dt.strftime("%Y-%m-%d").tolist()
     if not options:
         st.warning("No runs available.")
     else:
@@ -244,32 +625,24 @@ with tab1:
                 sv = explainer_clf.shap_values(X)
                 arr = np.asarray(sv)
 
-                # Handle multiple possible shapes
                 if isinstance(sv, list):
-                    # List of (n_samples, n_features)
-                    stacked = np.stack(
-                        [np.abs(s) for s in sv], axis=0
-                    )  # (n_classes, n_samples, n_features)
+                    stacked = np.stack([np.abs(s) for s in sv], axis=0)
                     mean_abs = stacked.mean(axis=(0, 1))
                 else:
-                    # array, ensure it's 2D (n_features,)
                     arr = np.abs(arr)
                     if arr.ndim == 3:
-                        # could be (n_samples, n_features, n_classes) or (n_samples, n_classes, n_features)
                         if arr.shape[1] == X.shape[1]:
                             mean_abs = arr.mean(axis=(0, 2))
                         elif arr.shape[2] == X.shape[1]:
                             mean_abs = arr.mean(axis=(0, 1))
                         else:
-                            # flatten any extra class axis
                             mean_abs = arr.mean(axis=tuple(range(arr.ndim - 1)))
                     elif arr.ndim == 2:
                         mean_abs = arr.mean(axis=0)
                     else:
                         mean_abs = arr.flatten()
 
-                # --- build dataframe safely ---
-                mean_abs = np.ravel(mean_abs)  # ensure 1D
+                mean_abs = np.ravel(mean_abs)
                 global_df = pd.DataFrame(
                     {
                         "Feature": [FEATURE_LABELS.get(f, f) for f in rf_clf.feature_names_in_],
@@ -281,20 +654,23 @@ with tab1:
                     alt.Chart(global_df.head(10))
                     .mark_bar()
                     .encode(
-                        x=alt.X("Importance:Q", title="Mean |SHAP|"),
+                        x=alt.X(
+                            "Importance:Q",
+                            title="Mean |SHAP|",
+                        ),
                         y=alt.Y("Feature:N", sort="-x"),
                     )
                 )
                 st.altair_chart(chart, use_container_width=True)
-                st.caption("Average influence of each feature across all runs.")
+                st.caption("Average influence of each feature " "across all runs.")
 
 
 # ---------------------------------------------------
-# 📈 Tab 2 — Compare Two Runs
+# Tab 2 — Compare Two Runs
 # ---------------------------------------------------
 with tab2:
     st.subheader("Compare Runs")
-    dates = summary_df["date"].dt.strftime("%Y-%m-%d").tolist()
+    dates = filtered_df["date"].dt.strftime("%Y-%m-%d").tolist()
     if len(dates) < 2:
         st.info("At least two runs required.")
     else:
@@ -312,19 +688,40 @@ with tab2:
             diff = pd.Series(shap2 - shap1, index=rf_clf.feature_names_in_).sort_values(
                 key=lambda x: abs(x), ascending=False
             )
-            st.markdown("**Differences in model interpretation (Run 2 − Run 1):**")
+            st.markdown("**Differences in model interpretation " "(Run 2 \u2212 Run 1):**")
             diff_df = (
                 diff.head(10)
                 .rename(index=lambda f: FEATURE_LABELS.get(f, f))
                 .reset_index()
-                .rename(columns={"index": "Feature", 0: "Δ SHAP"})
+                .rename(columns={"index": "Feature", 0: "\u0394 SHAP"})
             )
-            st.bar_chart(diff_df.set_index("Feature"))
+
+            diff_chart = (
+                alt.Chart(diff_df)
+                .mark_bar()
+                .encode(
+                    x=alt.X(
+                        "\u0394 SHAP:Q",
+                        title="SHAP Difference",
+                    ),
+                    y=alt.Y(
+                        "Feature:N",
+                        sort=None,
+                        title="Feature",
+                    ),
+                    color=alt.condition(
+                        alt.datum["\u0394 SHAP"] > 0,
+                        alt.value("#00FF87"),
+                        alt.value("#FF6B6B"),
+                    ),
+                )
+            )
+            st.altair_chart(diff_chart, use_container_width=True)
         else:
-            st.info("Could not compute comparison (missing SHAP or runs).")
+            st.info("Could not compute comparison " "(missing SHAP or runs).")
 
 # ---------------------------------------------------
-# 🌍 Tab 3 — Global Insights
+# Tab 3 — Global Insights
 # ---------------------------------------------------
 with tab3:
     st.subheader("Global Feature Importance")
@@ -339,12 +736,10 @@ with tab3:
             mean_abs = np.abs(arr).mean(axis=(0, 1))
         else:
             mean_abs = np.abs(arr).mean(axis=0)
-        # --- force 1-D importance vector ---
         mean_abs = np.array(mean_abs)
         if mean_abs.ndim > 1:
             mean_abs = mean_abs.mean(axis=-1).ravel()
 
-        # now safe to build dataframe
         global_df = pd.DataFrame(
             {
                 "Feature": [FEATURE_LABELS.get(f, f) for f in rf_clf.feature_names_in_],
@@ -355,27 +750,39 @@ with tab3:
         chart = (
             alt.Chart(global_df.head(10))
             .mark_bar()
-            .encode(x=alt.X("Importance:Q", title="Mean |SHAP|"), y=alt.Y("Feature:N", sort="-x"))
+            .encode(
+                x=alt.X("Importance:Q", title="Mean |SHAP|"),
+                y=alt.Y("Feature:N", sort="-x"),
+            )
         )
         st.altair_chart(chart, use_container_width=True)
-        st.caption("Average influence of each feature across all runs.")
+        st.caption("Average influence of each feature " "across all runs.")
     else:
-        st.info("Global SHAP importance unavailable — explainer not loaded.")
+        st.info("Global SHAP importance unavailable " "\u2014 explainer not loaded.")
 
     st.markdown("#### Performance Trend (Average Pace Over Time)")
-    if "avg_pace_min_km" in summary_df.columns:
+    pace_df = filtered_df.sort_values("date")
+    if not pace_df.empty and "avg_pace_min_km" in pace_df.columns:
         trend = (
-            alt.Chart(summary_df).mark_line(point=True).encode(x="date:T", y="avg_pace_min_km:Q")
+            alt.Chart(pace_df)
+            .mark_line(point=True, strokeWidth=2.5)
+            .encode(
+                x=alt.X("date:T", title="Date"),
+                y=alt.Y(
+                    "avg_pace_min_km:Q",
+                    title="Avg Pace (min/km)",
+                    scale=alt.Scale(reverse=True),
+                ),
+                tooltip=[
+                    alt.Tooltip("date:T", title="Date"),
+                    alt.Tooltip(
+                        "avg_pace_min_km:Q",
+                        title="Pace (min/km)",
+                        format=".2f",
+                    ),
+                ],
+            )
         )
         st.altair_chart(trend, use_container_width=True)
     else:
         st.info("No pace data found.")
-
-# ---------------------------------------------------
-# 🏁 Summary
-# ---------------------------------------------------
-# This humanized version improves clarity and trust without altering ML logic.
-# - Human-readable feature labels and run type names.
-# - Short, narrative explanations for predictions.
-# - Cleaner section flow and neutral tone.
-# - Compatible with Notebook 7 (PostgreSQL integration) and future deployment.
