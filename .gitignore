@@ -80,6 +80,10 @@ streamlit_cache/
 
 # Claude Code
 CLAUDE.md
+.claude/
+
+# SQL scripts
+data/sql/
 
 # Build / Dist
 build/
