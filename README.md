@@ -11,6 +11,8 @@
 **Running Agent** analyzes Garmin/Strava running data to extract insights, track training load, and build predictive, explainable models.
 It serves both as a **personal training analytics tool** and a **data-science portfolio project** showcasing reproducible pipelines, interpretable ML, and SQL-backed dashboards.
 
+![Dashboard Screenshot](docs/dashboard_screenshot.png)
+
 ---
 
 ## 📊 Overview
