@@ -19,6 +19,7 @@ ignore = [
   "E203",
   "E501",     # long lines are fine
   "PLR2004",  # magic numbers for array shapes
+  "PLR0911",  # many returns in SHAP shape dispatch
   "SIM105",   # try/except simplification
   "SIM116",   # dict suggestion
   "SIM117",   # nested with suggestion

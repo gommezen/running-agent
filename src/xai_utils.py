@@ -80,6 +80,11 @@ def _reduce_to_1d_for_class(
     if arr.ndim == 2 and arr.shape[1] == n_features:
         return arr[0, :]
 
+    # Shape (n_samples, n_features, n_classes) — pick class from last axis
+    if arr.ndim == 3 and arr.shape[1] == n_features and arr.shape[0] == n_samples_expected:
+        return arr[0, :, choose]
+
+    # Shape (n_samples, n_classes, n_features) — pick class from middle axis
     if arr.ndim == 3 and arr.shape[2] == n_features and arr.shape[0] == n_samples_expected:
         return arr[0, choose, :]
 
@@ -164,6 +169,9 @@ def shap_summary_dataframe(
 
     if arr.ndim == 2 and arr.shape == (X.shape[0], X.shape[1]):
         mean_abs = np.mean(np.abs(arr), axis=0)
+    elif arr.ndim == 3 and arr.shape[0] == X.shape[0] and arr.shape[1] == X.shape[1]:
+        # Shape (n_samples, n_features, n_classes) — mean over samples & classes
+        mean_abs = np.mean(np.abs(arr), axis=(0, 2))
     elif (
         arr.ndim == 3
         and arr.shape[0] == X.shape[0]
@@ -172,6 +180,7 @@ def shap_summary_dataframe(
         and arr.shape[0] != X.shape[0]
         and arr.shape[2] == X.shape[1]
     ):
+        # Shape (n_samples, n_classes, n_features) — mean over samples & classes
         mean_abs = np.mean(np.mean(np.abs(arr), axis=1), axis=0)
     elif arr.ndim == 2 and arr.shape[0] == X.shape[1]:
         mean_abs = np.mean(np.abs(arr), axis=1)

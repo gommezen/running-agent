@@ -8,6 +8,7 @@
 # Translates technical ML outputs into human-readable running insights.
 #
 # Features:
+# - Model toggle: RF classifier (run type) vs RF regressor (pace)
 # - Metric cards (weekly mileage, avg pace, streak, total runs)
 # - Sidebar filters (date range, run type, distance)
 # - SHAP-powered single-run analysis, run comparison, global insights
@@ -53,6 +54,7 @@ project_root = Path(__file__).resolve().parent
 sys.path.append(str(project_root))
 
 from src.db_utils import get_engine  # noqa: E402
+from src.xai_utils import shap_vector_for_sample  # noqa: E402
 
 with contextlib.suppress(Exception):
     st.set_page_config(
@@ -218,57 +220,62 @@ inject_custom_css()
 # ---------------------------------------------------
 # Altair Dark Athletic Theme
 # ---------------------------------------------------
-@alt.theme.register("running_dark", enable=True)
-def _running_dark_theme() -> alt.theme.ThemeConfig:
+def _running_dark_theme() -> dict[str, Any]:
     """Dark athletic theme for all Altair charts."""
-    return alt.theme.ThemeConfig(
-        {
-            "config": {
-                "background": "#0E1117",
-                "view": {"stroke": "transparent"},
-                "axis": {
-                    "domainColor": "#30363D",
-                    "gridColor": "#21262D",
-                    "tickColor": "#30363D",
-                    "labelColor": "#8B949E",
-                    "titleColor": "#E6EDF3",
-                    "labelFont": "Exo 2, sans-serif",
-                    "titleFont": "Exo 2, sans-serif",
-                    "labelFontSize": 11,
-                    "titleFontSize": 13,
-                    "titleFontWeight": 600,
-                },
-                "legend": {
-                    "labelColor": "#8B949E",
-                    "titleColor": "#E6EDF3",
-                    "labelFont": "Exo 2, sans-serif",
-                    "titleFont": "Exo 2, sans-serif",
-                },
-                "title": {
-                    "color": "#E6EDF3",
-                    "font": "Exo 2, sans-serif",
-                    "fontSize": 16,
-                    "fontWeight": 700,
-                },
-                "mark": {"color": "#00FF87"},
-                "bar": {"color": "#00FF87"},
-                "line": {"color": "#00FF87", "strokeWidth": 2.5},
-                "point": {"color": "#00FF87", "filled": True, "size": 60},
-                "range": {
-                    "category": [
-                        "#00FF87",
-                        "#00BFFF",
-                        "#FF6B6B",
-                        "#FFD93D",
-                        "#C084FC",
-                        "#FF8C42",
-                        "#6EE7B7",
-                        "#F472B6",
-                    ],
-                },
+    return {
+        "config": {
+            "background": "#0E1117",
+            "view": {"stroke": "transparent"},
+            "axis": {
+                "domainColor": "#30363D",
+                "gridColor": "#21262D",
+                "tickColor": "#30363D",
+                "labelColor": "#8B949E",
+                "titleColor": "#E6EDF3",
+                "labelFont": "Exo 2, sans-serif",
+                "titleFont": "Exo 2, sans-serif",
+                "labelFontSize": 11,
+                "titleFontSize": 13,
+                "titleFontWeight": 600,
             },
-        }
-    )
+            "legend": {
+                "labelColor": "#8B949E",
+                "titleColor": "#E6EDF3",
+                "labelFont": "Exo 2, sans-serif",
+                "titleFont": "Exo 2, sans-serif",
+            },
+            "title": {
+                "color": "#E6EDF3",
+                "font": "Exo 2, sans-serif",
+                "fontSize": 16,
+                "fontWeight": 700,
+            },
+            "mark": {"color": "#00FF87"},
+            "bar": {"color": "#00FF87"},
+            "line": {"color": "#00FF87", "strokeWidth": 2.5},
+            "point": {"color": "#00FF87", "filled": True, "size": 60},
+            "range": {
+                "category": [
+                    "#00FF87",
+                    "#00BFFF",
+                    "#FF6B6B",
+                    "#FFD93D",
+                    "#C084FC",
+                    "#FF8C42",
+                    "#6EE7B7",
+                    "#F472B6",
+                ],
+            },
+        },
+    }
+
+
+# Support both Altair 5.5+ (alt.theme.register) and 5.4.x (alt.themes.register)
+if hasattr(alt, "theme") and hasattr(alt.theme, "register"):
+    alt.theme.register("running_dark", enable=True)(_running_dark_theme)
+else:
+    alt.themes.register("running_dark", _running_dark_theme)  # type: ignore[attr-defined]
+    alt.themes.enable("running_dark")  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------
@@ -287,18 +294,27 @@ for name in _model_candidates:
         break
 
 explainer_path = model_dir / "shap_explainer_clf.pkl"
+rf_reg_model_path = model_dir / "random_forest_regressor.pkl"
+explainer_reg_path = model_dir / "shap_explainer_reg.pkl"
+feature_cols_path = model_dir / "feature_columns.pkl"
 
 
 # ---------------------------------------------------
 # Load Models + Data
 # ---------------------------------------------------
 @cache_resource
-def load_models() -> tuple[Any, Any | None]:
+def load_models() -> tuple[Any, Any | None, Any | None, Any | None, list[str]]:
+    """Load classifier, regressor, both SHAP explainers, and feature list."""
     if rf_model_path is None:
-        raise FileNotFoundError(f"No model found in {model_dir}")
+        raise FileNotFoundError(f"No classifier found in {model_dir}")
     rf_clf: Any = joblib.load(rf_model_path)
-    explainer: Any | None = joblib.load(explainer_path) if explainer_path.exists() else None
-    return rf_clf, explainer
+    explainer_clf: Any | None = joblib.load(explainer_path) if explainer_path.exists() else None
+    rf_reg: Any | None = joblib.load(rf_reg_model_path) if rf_reg_model_path.exists() else None
+    explainer_reg: Any | None = (
+        joblib.load(explainer_reg_path) if explainer_reg_path.exists() else None
+    )
+    feature_cols: list[str] = joblib.load(feature_cols_path) if feature_cols_path.exists() else []
+    return rf_clf, explainer_clf, rf_reg, explainer_reg, feature_cols
 
 
 @cache_data
@@ -309,13 +325,29 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-rf_clf, explainer_clf = load_models()
+rf_clf, explainer_clf, rf_reg, explainer_reg, _all_feature_cols = load_models()
 summary_df = load_data()
 
-# Add predicted run type column for sidebar filtering
-_feature_cols = rf_clf.feature_names_in_
-_X_fill = summary_df[_feature_cols].fillna(summary_df[_feature_cols].mean())
+# Derive feature name lists for each model
+CLF_FEATURES: list[str] = list(rf_clf.feature_names_in_)
+
+if rf_reg is not None and hasattr(rf_reg, "feature_names_in_"):
+    REG_FEATURES: list[str] = list(rf_reg.feature_names_in_)
+elif rf_reg is not None and _all_feature_cols:
+    REG_FEATURES = _all_feature_cols[: rf_reg.n_features_in_]
+else:
+    REG_FEATURES = []
+
+_REG_AVAILABLE = rf_reg is not None and len(REG_FEATURES) > 0
+
+# Add predicted run type column for sidebar filtering (always uses classifier)
+_X_fill = summary_df[CLF_FEATURES].fillna(summary_df[CLF_FEATURES].mean())
 summary_df["predicted_type"] = rf_clf.predict(_X_fill)
+
+# Add predicted pace column if regressor is available
+if _REG_AVAILABLE and rf_reg is not None:
+    _reg_X = summary_df[REG_FEATURES].fillna(summary_df[REG_FEATURES].mean())
+    summary_df["predicted_pace"] = rf_reg.predict(_reg_X)
 
 
 # ---------------------------------------------------
@@ -346,66 +378,39 @@ RUN_TYPE_LABELS: dict[int, str] = {
 
 
 # ---------------------------------------------------
-# Explainability Text Generator
+# Helper Functions
 # ---------------------------------------------------
+def _active_model_context(
+    mode: str,
+) -> tuple[Any, Any | None, list[str]]:
+    """Return (model, explainer, feature_names) for the active mode."""
+    if mode == "regressor" and _REG_AVAILABLE:
+        return rf_reg, explainer_reg, REG_FEATURES
+    return rf_clf, explainer_clf, CLF_FEATURES
+
+
+def _format_pace(pace_min_km: float) -> str:
+    """Format a pace float (min/km) as M:SS /km."""
+    if pd.isna(pace_min_km):
+        return "--:-- /km"
+    minutes = int(pace_min_km)
+    seconds = int((pace_min_km - minutes) * 60)
+    return f"{minutes}:{seconds:02d} /km"
+
+
 def explain_prediction(pred_label: int, top_features: pd.Series) -> str:
     """Return a short, human explanation for the prediction."""
     if pred_label == 0:
-        return "Low intensity and short duration suggest " "this was an easy recovery run."
+        return "Low intensity and short duration suggest this was an easy recovery run."
     if pred_label == 1:
         return (
-            "Steady pace, moderate elevation, and consistent "
-            "cadence indicate endurance training."
+            "Steady pace, moderate elevation, and consistent cadence indicate endurance training."
         )
     if pred_label == 2:
-        return "High cadence and variable pace point toward " "interval or tempo work."
+        return "High cadence and variable pace point toward interval or tempo work."
     if pred_label == 3:
-        return "Long distance and steady rhythm match " "a classic long run profile."
-    return "The model detected a mixed running pattern " "based on your data."
-
-
-# ---------------------------------------------------
-# Helper for SHAP vector extraction
-# ---------------------------------------------------
-def shap_vector_for_sample(
-    explainer: Any,
-    model: Any,
-    X_one_row: pd.DataFrame,
-) -> tuple[np.ndarray, Any]:
-    """
-    Safe universal SHAP vector extractor.
-    Works for list-per-class, (n,feat,class), (n,class,feat),
-    or (n,feat).
-    """
-    nfeat = X_one_row.shape[1]
-    raw: Any = explainer.shap_values(X_one_row)
-    arr = np.asarray(raw)
-
-    # Case 1: SHAP returns list of arrays (one per class)
-    if isinstance(raw, list):
-        pred_class = int(np.argmax(model.predict_proba(X_one_row), axis=1)[0])
-        v = np.array(raw[pred_class])
-        if v.ndim == 2:
-            return v[0], raw
-        return v, raw
-
-    # Case 2: shape (n_samples, n_features, n_classes)
-    if arr.ndim == 3 and arr.shape[1] == nfeat:
-        pred_class = int(np.argmax(model.predict_proba(X_one_row), axis=1)[0])
-        return arr[0, :, pred_class], raw
-
-    # Case 3: shape (n_samples, n_classes, n_features)
-    if arr.ndim == 3 and arr.shape[2] == nfeat:
-        pred_class = int(np.argmax(model.predict_proba(X_one_row), axis=1)[0])
-        return arr[0, pred_class, :], raw
-
-    # Case 4: simple (n_samples, n_features)
-    if arr.ndim == 2 and arr.shape[1] == nfeat:
-        return arr[0], raw
-
-    # Anything else
-    st.error(f"Unhandled SHAP shape: {arr.shape}")
-    return np.zeros(nfeat), raw
+        return "Long distance and steady rhythm match a classic long run profile."
+    return "The model detected a mixed running pattern based on your data."
 
 
 # ---------------------------------------------------
@@ -487,9 +492,28 @@ def _compute_total_runs(
 
 
 # ---------------------------------------------------
-# Sidebar Filters
+# Sidebar — Model Selection + Filters
 # ---------------------------------------------------
 with st.sidebar:
+    st.markdown("## Model")
+
+    _model_options = ["Run Type (Classifier)"]
+    if _REG_AVAILABLE:
+        _model_options.append("Pace (Regressor)")
+
+    selected_model_label = st.radio(
+        "Prediction model",
+        options=_model_options,
+        index=0,
+        key="sidebar_model_select",
+        help=(
+            "Classifier predicts run type (Recovery, Endurance, etc.). "
+            "Regressor predicts pace (min/km)."
+        ),
+    )
+    model_mode = "regressor" if selected_model_label == "Pace (Regressor)" else "classifier"
+
+    st.markdown("---")
     st.markdown("## Filters")
     st.caption("Narrow the runs displayed in charts and metrics.")
 
@@ -504,14 +528,17 @@ with st.sidebar:
         key="sidebar_date_range",
     )
 
-    # Run type filter
-    all_run_types = list(RUN_TYPE_LABELS.values())
-    selected_types = st.multiselect(
-        "Run type",
-        options=all_run_types,
-        default=all_run_types,
-        key="sidebar_run_type",
-    )
+    # Run type filter (classifier mode only)
+    if model_mode == "classifier":
+        all_run_types = list(RUN_TYPE_LABELS.values())
+        selected_types = st.multiselect(
+            "Run type",
+            options=all_run_types,
+            default=all_run_types,
+            key="sidebar_run_type",
+        )
+    else:
+        selected_types = list(RUN_TYPE_LABELS.values())
 
     # Distance range slider
     dist_min = float(summary_df["total_distance_km"].min())
@@ -532,14 +559,14 @@ with st.sidebar:
     st.markdown(
         "<div style='text-align:center; color:#8B949E; "
         "font-size:0.75rem; padding:8px 0;'>"
-        "Running Insights v2.0<br>"
-        "RF + SHAP Analytics"
+        "Running Insights v2.1<br>"
+        "RF Classifier + Regressor &middot; SHAP Analytics"
         "</div>",
         unsafe_allow_html=True,
     )
 
 # ---------------------------------------------------
-# Apply Filters → filtered_df
+# Apply Filters -> filtered_df
 # ---------------------------------------------------
 _reverse_type_map = {v: k for k, v in RUN_TYPE_LABELS.items()}
 _mask = pd.Series(True, index=summary_df.index)
@@ -594,7 +621,7 @@ else:
     with m4:
         st.metric("Total Runs", total_val, total_delta)
 
-st.caption(f"Loaded {summary_df.shape[0]} runs " f"({len(filtered_df)} shown after filters)")
+st.caption(f"Loaded {summary_df.shape[0]} runs ({len(filtered_df)} shown after filters)")
 
 
 # ---------------------------------------------------
@@ -614,55 +641,54 @@ with tab1:
         selected_date = st.selectbox("Select run date", options)
         case = summary_df[summary_df["date"].dt.strftime("%Y-%m-%d") == selected_date]
         if not case.empty:
-            X_means = summary_df[rf_clf.feature_names_in_].mean()
-            case_X = case[rf_clf.feature_names_in_].fillna(X_means).iloc[[0]]
-            pred_label = int(rf_clf.predict(case_X)[0])
-            label_text = RUN_TYPE_LABELS.get(pred_label, f"Cluster {pred_label}")
-            st.markdown(f"### Model predicts: **{label_text}**")
+            model, explainer, feat_names = _active_model_context(model_mode)
+            X_means = summary_df[feat_names].mean()
+            case_X = case[feat_names].fillna(X_means).iloc[[0]]
 
-            if explainer_clf:
-                X = summary_df[rf_clf.feature_names_in_]
-                sv = explainer_clf.shap_values(X)
-                arr = np.asarray(sv)
+            if model_mode == "classifier":
+                pred_label = int(model.predict(case_X)[0])
+                label_text = RUN_TYPE_LABELS.get(pred_label, f"Cluster {pred_label}")
+                st.markdown(f"### Model predicts: **{label_text}**")
+                st.caption(explain_prediction(pred_label, pd.Series()))
+            else:
+                pred_pace = float(model.predict(case_X)[0])
+                st.markdown(f"### Predicted pace: **{_format_pace(pred_pace)}**")
+                actual = case["avg_pace_min_km"].iloc[0]
+                if not pd.isna(actual):
+                    diff = pred_pace - actual
+                    st.caption(f"Actual: {_format_pace(actual)}  |  Difference: {diff:+.2f} min/km")
 
-                if isinstance(sv, list):
-                    stacked = np.stack([np.abs(s) for s in sv], axis=0)
-                    mean_abs = stacked.mean(axis=(0, 1))
-                else:
-                    arr = np.abs(arr)
-                    if arr.ndim == 3:
-                        if arr.shape[1] == X.shape[1]:
-                            mean_abs = arr.mean(axis=(0, 2))
-                        elif arr.shape[2] == X.shape[1]:
-                            mean_abs = arr.mean(axis=(0, 1))
-                        else:
-                            mean_abs = arr.mean(axis=tuple(range(arr.ndim - 1)))
-                    elif arr.ndim == 2:
-                        mean_abs = arr.mean(axis=0)
-                    else:
-                        mean_abs = arr.flatten()
-
-                mean_abs = np.ravel(mean_abs)
-                global_df = pd.DataFrame(
+            # Per-sample SHAP chart
+            if explainer is not None:
+                shap_vec, _ = shap_vector_for_sample(explainer, model, case_X)
+                shap_df = pd.DataFrame(
                     {
-                        "Feature": [FEATURE_LABELS.get(f, f) for f in rf_clf.feature_names_in_],
-                        "Importance": mean_abs,
+                        "Feature": [FEATURE_LABELS.get(f, f) for f in feat_names],
+                        "SHAP": shap_vec,
                     }
-                ).sort_values("Importance", ascending=False)
+                ).sort_values("SHAP", key=lambda x: abs(x), ascending=False)
 
+                chart_title = (
+                    "What drives this run type prediction"
+                    if model_mode == "classifier"
+                    else "What drives this pace prediction"
+                )
                 chart = (
-                    alt.Chart(global_df.head(10))
+                    alt.Chart(shap_df.head(10))
                     .mark_bar()
                     .encode(
-                        x=alt.X(
-                            "Importance:Q",
-                            title="Mean |SHAP|",
-                        ),
+                        x=alt.X("SHAP:Q", title="SHAP value"),
                         y=alt.Y("Feature:N", sort="-x"),
+                        color=alt.condition(
+                            alt.datum["SHAP"] > 0,
+                            alt.value("#00FF87"),
+                            alt.value("#FF6B6B"),
+                        ),
                     )
+                    .properties(title=chart_title)
                 )
                 st.altair_chart(chart, use_container_width=True)
-                st.caption("Average influence of each feature " "across all runs.")
+                st.caption("Green = pushes prediction higher, Red = pushes prediction lower.")
 
 
 # ---------------------------------------------------
@@ -679,16 +705,22 @@ with tab2:
         d2 = col2.selectbox("Second run", dates, index=1, key="cmp2")
         df1 = summary_df[summary_df["date"].dt.strftime("%Y-%m-%d") == d1]
         df2 = summary_df[summary_df["date"].dt.strftime("%Y-%m-%d") == d2]
-        if not df1.empty and not df2.empty and explainer_clf:
-            X_means = summary_df[rf_clf.feature_names_in_].mean()
-            x1 = df1[rf_clf.feature_names_in_].fillna(X_means).iloc[[0]]
-            x2 = df2[rf_clf.feature_names_in_].fillna(X_means).iloc[[0]]
-            shap1, _ = shap_vector_for_sample(explainer_clf, rf_clf, x1)
-            shap2, _ = shap_vector_for_sample(explainer_clf, rf_clf, x2)
-            diff = pd.Series(shap2 - shap1, index=rf_clf.feature_names_in_).sort_values(
+        model, explainer, feat_names = _active_model_context(model_mode)
+        if not df1.empty and not df2.empty and explainer is not None:
+            X_means = summary_df[feat_names].mean()
+            x1 = df1[feat_names].fillna(X_means).iloc[[0]]
+            x2 = df2[feat_names].fillna(X_means).iloc[[0]]
+            shap1, _ = shap_vector_for_sample(explainer, model, x1)
+            shap2, _ = shap_vector_for_sample(explainer, model, x2)
+            diff = pd.Series(shap2 - shap1, index=feat_names).sort_values(
                 key=lambda x: abs(x), ascending=False
             )
-            st.markdown("**Differences in model interpretation " "(Run 2 \u2212 Run 1):**")
+            diff_title = (
+                "Differences in run type interpretation"
+                if model_mode == "classifier"
+                else "Differences in pace prediction"
+            )
+            st.markdown(f"**{diff_title} (Run 2 \u2212 Run 1):**")
             diff_df = (
                 diff.head(10)
                 .rename(index=lambda f: FEATURE_LABELS.get(f, f))
@@ -718,16 +750,23 @@ with tab2:
             )
             st.altair_chart(diff_chart, use_container_width=True)
         else:
-            st.info("Could not compute comparison " "(missing SHAP or runs).")
+            st.info("Could not compute comparison (missing SHAP or runs).")
 
 # ---------------------------------------------------
 # Tab 3 — Global Insights
 # ---------------------------------------------------
 with tab3:
-    st.subheader("Global Feature Importance")
-    if explainer_clf:
-        X = summary_df[rf_clf.feature_names_in_]
-        sv = explainer_clf.shap_values(X)
+    model, explainer, feat_names = _active_model_context(model_mode)
+    section_title = (
+        "Global Feature Importance (Run Type)"
+        if model_mode == "classifier"
+        else "Global Feature Importance (Pace)"
+    )
+    st.subheader(section_title)
+
+    if explainer is not None:
+        X = summary_df[feat_names].fillna(summary_df[feat_names].mean())
+        sv = explainer.shap_values(X)
         arr = np.asarray(sv)
         if isinstance(sv, list):
             stacked = np.stack([np.abs(s) for s in sv], axis=0)
@@ -742,7 +781,7 @@ with tab3:
 
         global_df = pd.DataFrame(
             {
-                "Feature": [FEATURE_LABELS.get(f, f) for f in rf_clf.feature_names_in_],
+                "Feature": [FEATURE_LABELS.get(f, f) for f in feat_names],
                 "Importance": mean_abs.tolist(),
             }
         ).sort_values("Importance", ascending=False)
@@ -756,9 +795,12 @@ with tab3:
             )
         )
         st.altair_chart(chart, use_container_width=True)
-        st.caption("Average influence of each feature " "across all runs.")
+        shap_context = (
+            "run type classification" if model_mode == "classifier" else "pace prediction"
+        )
+        st.caption(f"Average influence of each feature across all runs ({shap_context}).")
     else:
-        st.info("Global SHAP importance unavailable " "\u2014 explainer not loaded.")
+        st.info("Global SHAP importance unavailable \u2014 explainer not loaded.")
 
     st.markdown("#### Performance Trend (Average Pace Over Time)")
     pace_df = filtered_df.sort_values("date")
