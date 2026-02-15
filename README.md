@@ -4,8 +4,8 @@
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.35-FF4B4B?logo=streamlit&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-F7931E?logo=scikitlearn&logoColor=white)
-![SHAP](https://img.shields.io/badge/SHAP-0.45-purple)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.7-F7931E?logo=scikitlearn&logoColor=white)
+![SHAP](https://img.shields.io/badge/SHAP-0.46-purple)
 ![Ruff](https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white)
 
 **Running Agent** analyzes Garmin/Strava running data to extract insights, track training load, and build predictive, explainable models.
@@ -71,7 +71,7 @@ running-agent/
 │   ├── raw/                  # raw Garmin/Strava exports (ignored in Git)
 │   ├── interim/              # temporary intermediate outputs
 │   ├── processed/            # derived CSV/Parquet files
-│   └── .gitkeep
+│   └── sql/                  # database init scripts (ignored in Git)
 │
 ├── notebooks/
 │   ├── 01_explore_data.ipynb
@@ -79,43 +79,56 @@ running-agent/
 │   ├── 03_clustering_runs.ipynb
 │   ├── 04_predictive_models.ipynb
 │   ├── 05_model_interpretation.ipynb
-│   ├── 06_interactive_dashboard.py
 │   ├── 07_postgresql_storage.ipynb
 │   └── archive/
 │
 ├── src/
 │   ├── __init__.py
-│   ├── db_utils.py          # PostgreSQL utilities
-│   ├── xai_utils.py         # SHAP helper functions
-│   └── archive/
+│   ├── db_utils.py           # PostgreSQL utilities
+│   ├── xai_utils.py          # SHAP helper functions
+│   ├── features/
+│   │   └── engineering.py    # feature engineering pipeline
+│   └── ingestion/
+│       └── parse_fit.py      # .fit file parsing
 │
-├── models/
+├── models/                   # trained models (ignored in Git)
 │   ├── model_rf_clf.joblib
-│   ├── shap_explainer_clf.pkl
-│   └── archive/
+│   └── shap_explainer_clf.pkl
 │
+├── 06_interactive_dashboard_humanized.py  # Streamlit dashboard
 ├── requirements.txt
+├── requirements-dev.txt
 ├── .gitignore
-├── README.md
-└── check_storage.sql
+└── README.md
 
 ---
 
 ## ⚙️ Environment Setup
 
+```bash
 # 1. Clone repository
-git clone https://github.com/<YOUR_USERNAME>/running-agent.git
+git clone https://github.com/gommezen/running-agent.git
 cd running-agent
 
 # 2. Create and activate environment
 python -m venv .venv
-source .venv/bin/activate  # or .\.venv\Scripts\activate on Windows
+source .venv/bin/activate        # Linux / macOS
+# .\.venv\Scripts\activate       # Windows
 
 # 3. Install dependencies
 pip install -r requirements.txt
+pip install -r requirements-dev.txt   # linting, testing, pre-commit
 
-# 4. Test PostgreSQL connection
+# 4. Set up PostgreSQL
+# Create a database, then create a .env file in the project root:
+#   DATABASE_URL=postgresql://user:password@localhost:5432/running_agent
+
+# 5. Test database connection
 python -m src.db_utils
+
+# 6. Run the dashboard
+streamlit run 06_interactive_dashboard_humanized.py
+```
 
 ---
 
