@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.egg
 *.egg-info/
 *.eggs/
 *.manifest
@@ -21,6 +22,10 @@ ENV/
 .coverage
 .tox/
 .pytest_cache/
+
+# Linting / Type checking
+.mypy_cache/
+.ruff_cache/
 
 # ---------------------------
 # Jupyter / Notebooks
@@ -52,8 +57,7 @@ data/processed/
 !data/.gitkeep
 !data/processed/.gitkeep
 
-
-# Credentials / tokens (just in case)
+# Credentials / tokens
 *.json
 *.token
 *.secret
@@ -82,9 +86,9 @@ streamlit_cache/
 CLAUDE.md
 .claude/
 
+# Docker
+docker-compose.override.yml
 
 # Build / Dist
 build/
 dist/
-*.egg
-*.egg-info/
